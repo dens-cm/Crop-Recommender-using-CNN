@@ -1,0 +1,7 @@
+flask
+tensorflow
+joblib
+gunicorn
+scikit-learn
+Pillow
+numpy

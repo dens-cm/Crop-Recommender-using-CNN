@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+    <link rel="icon" href="{{ url_for('static', filename='images/logo.png') }}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.9.4/Chart.js"></script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    <title>Wise Crop</title>
+</head>
+<body>
+    <div id="parent">
+        <div id="header">
+            <img src="{{ url_for('static', filename='images/logo.png') }}" alt="logo" srcset="">
+            <h4>Wise Crop</h4>
+            <p>about</p>
+        </div>
+        <h3 id="text">Discover the ideal crop for your soil with ease.</h3>
+        <div id="content">
+            <div id="left"> 
+                <img id="uploaded_image" src="{{ url_for('static', filename='images/upload.png') }}" alt="">
+                <input type="file" id="file_input" style="display: none;" capture="camera">
+                <button type="button" id="take_photo">Take a photo of soil</button>
+                <button id="upload_photo">Upload photo of soil</button>
+            </div>
+            <div id="right">
+                <h6 id="result_header">Select image to recommend crop.</h6>
+                <div id="loading">
+                    <h6>classifying image...</h6>
+                    <section class="dots-container">
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                        <div class="dot"></div>
+                    </section>
+                </div>
+                <h6 hidden id="soil_header"></h6>
+                <p hidden id="soil_result"></p>
+                <h6 id="crop_header"></h6>
+                <ul>
+                    <li id="rice">Rice</li>
+                    <li id="palm_oil">Palm Oil</li>
+                    <li id="corn">Corn</li>
+                    <li id="banana">Banana</li>
+                </ul>
+                <canvas id="myChart" style="width:100%;max-height:700px; height:70%;"></canvas>
+                <p id="info"></p>
+            </div>
+        </div>
+        <div id="btn">
+            <button id="recommend">Recommend Crop</button>
+        </div>
+    </div>
+
+    <script>
+        const xValues = ["Banana", "Coffee", "Corn", "Palay", "Palm Oil"];
+        const defaultYValues = [0, 0, 0, 0, 0];
+        const barColors = ["orange", "orange","orange","orange","orange"];
+        
+        const myChart = new Chart("myChart", {
+            type: "bar",
+            data: {
+                labels: xValues,
+                datasets: [{
+                    backgroundColor: barColors,
+                    data: defaultYValues
+                }]
+            },
+            options: {
+                legend: { display: false },
+                title: {
+                    display: true,
+                    text: ""
+                },
+                scales: {
+                    yAxes: [{
+                        ticks: {
+                            beginAtZero: true,
+                            callback: function(value) {
+                                return value + "%"; // Add '%' to the tick labels
+                            }
+                        }
+                    }]
+                },
+                plugins: {
+                    datalabels: {
+                        color: 'black', // Set bar label text color to black
+                        anchor: 'end',
+                        align: 'end',
+                        padding: {
+                            top: 4, // Top padding
+                            right: 4, // Right padding
+                            bottom: 4, // Bottom padding
+                            left: 4 // Left padding
+                        },
+                        formatter: function(value, context) {
+                            return value + '%';
+                        }
+                    }
+                },
+                // Custom afterDraw hook to draw percentages inside bars
+                animation: {
+                    onComplete: function() {
+                        var chartInstance = this.chart;
+                        var ctx = chartInstance.ctx;
+                        ctx.font = Chart.helpers.fontString(Chart.defaults.global.defaultFontSize, Chart.defaults.global.defaultFontStyle, Chart.defaults.global.defaultFontFamily);
+                        ctx.fillStyle = 'black';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+    
+                        this.data.datasets.forEach(function(dataset, i) {
+                            var meta = chartInstance.controller.getDatasetMeta(i);
+                            meta.data.forEach(function(bar, index) {
+                                var data = dataset.data[index];
+                                var centerX = bar._model.x;
+                                var centerY = bar._model.y;
+                                ctx.fillText(data + '%', centerX, centerY - 5);
+                            });
+                        });
+                    }
+                }
+            }
+        });
+    
+        function updateChart(soilResult) {
+            let yValues;
+            switch (soilResult) {
+                case "Black Soil (Black shallow)":
+                    yValues = [10, 0, 60, 80, 100];
+                    break;
+                case "Clay Soil (Silty clay)":
+                    yValues = [20, 90, 10, 80, 70];
+                    break;
+                case "Red Soil":
+                    yValues = [0, 50, 10, 70, 20];
+                    break;
+                default:
+                    yValues = defaultYValues;
+            }
+    
+            myChart.data.datasets[0].data = yValues;
+            if (soilResult) {
+                document.getElementById("myChart").style.display = "block";
+            } else {
+                document.getElementById("myChart").style.display = "none";
+            }
+            myChart.update();
+        }
+    
+        // Get the soil_result element
+        const soilResultElement = document.getElementById("soil_result");
+    
+        // Hide chart if soil_result is empty on page load
+        //window.onload = function() {
+        //    if (!soilResultElement.textContent) {
+        //        document.getElementById("myChart").style.display = "none";
+        //    }
+        //};
+    
+        // Listen for changes in the text content
+        const observer = new MutationObserver(mutationsList => {
+            for (const mutation of mutationsList) {
+                if (mutation.type === 'childList') {
+                    updateChart(soilResultElement.textContent);
+                }
+            }
+        });
+    
+        // Start observing the soil_result element for changes
+        observer.observe(soilResultElement, { childList: true });
+    </script>    
+</body>
+</html>
